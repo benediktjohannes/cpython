@@ -480,11 +480,13 @@ class HTTPResponse(io.BufferedIOBase):
         if self.chunked:
             return self._read_chunked(amt)
 
+        cursize = min(amt, _MIN_READ_BUF_SIZE)
+
         if amt is not None and amt >= 0:
             if self.length is not None and amt > self.length:
                 # clip the read to the "end of response"
-                amt = self.length
-            s = self.fp.read(amt)
+                cursize = min(self.length, _MIN_READ_BUF_SIZE)
+            s = self.fp.read(cursize)
             if not s and amt:
                 # Ideally, we would raise IncompleteRead if the content-length
                 # wasn't satisfied, but it might break compatibility.
@@ -493,7 +495,20 @@ class HTTPResponse(io.BufferedIOBase):
                 self.length -= len(s)
                 if not self.length:
                     self._close_conn()
-            return s
+            if len(s) >= amt:
+                return s
+            s = io.BytesIO(s)
+            s.seek(0, 2)
+            while True:
+                delta = min(cursize, amt - cursize)
+                data.write(self.fp.read(delta))
+                    if s.tell() >= amt:
+                        return s.getvalue()
+                cursize += delta
+                if s.tell() < cursize:
+                    # Ideally, we would raise IncompleteRead if the content-length
+                    # wasn't satisfied, but it might break compatibility.
+                    self._close_conn()
         else:
             # Amount is not given (unbounded read) so we must check self.length
             if self.length is None:
