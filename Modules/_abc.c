@@ -766,7 +766,6 @@ _abc__abc_subclasscheck_impl(PyObject *module, PyObject *self,
         goto end;
     }
     if (ok == Py_True) {
-        Py_DECREF(ok);
         if (_add_to_weak_set(impl, &impl->_abc_cache, subclass) < 0) {
             goto end;
         }
@@ -774,7 +773,6 @@ _abc__abc_subclasscheck_impl(PyObject *module, PyObject *self,
         goto end;
     }
     if (ok == Py_False) {
-        Py_DECREF(ok);
         if (_add_to_weak_set(impl, &impl->_abc_negative_cache, subclass) < 0) {
             goto end;
         }
